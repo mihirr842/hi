@@ -3,7 +3,8 @@ on: [push, workflow_dispatch]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # We lock this to ubuntu-24.04 to avoid breaking during the OS migration
+    runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
 
@@ -21,14 +22,11 @@ jobs:
 
     - name: Initialize and Build APK
       run: |
+        # Generates the spec file automatically
         buildozer init
-        # Instantly builds using default Kivy settings. 
-        # Customize requirements below if your raw code needs extra libraries (like requests)
-        sed -i 's/requirements = python3,kivy/requirements = python3,kivy/g' buildozer.spec
+        
+        # Accept Android SDK licenses automatically to prevent interactive prompt crash
+        sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
+        
+        # Build the APK in non-interactive mode
         buildozer -v android debug
-
-    - name: Upload APK Artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: android-apk
-        path: bin/*.apk

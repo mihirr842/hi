@@ -1,0 +1,34 @@
+name: Build Android APK
+on: [push, workflow_dispatch]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install Buildozer Dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libltdl-dev libffi-dev libssl-dev autoconf autotools-dev libtool pkg-config zlib1g-dev libgstreamer1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good
+        pip install --upgrade pip
+        pip install buildozer cython Kivy
+
+    - name: Initialize and Build APK
+      run: |
+        buildozer init
+        # Instantly builds using default Kivy settings. 
+        # Customize requirements below if your raw code needs extra libraries (like requests)
+        sed -i 's/requirements = python3,kivy/requirements = python3,kivy/g' buildozer.spec
+        buildozer -v android debug
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-apk
+        path: bin/*.apk

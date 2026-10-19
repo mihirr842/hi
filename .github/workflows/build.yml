@@ -3,30 +3,43 @@ on: [push, workflow_dispatch]
 
 jobs:
   build:
-    # We lock this to ubuntu-24.04 to avoid breaking during the OS migration
     runs-on: ubuntu-24.04
     steps:
     - uses: actions/checkout@v4
 
+    - name: Set up Java Development Kit (JDK)
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Set up Android SDK
+      uses: android-actions/setup-android@v3
+
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
-        python-version: '3.10'
+        python-version: '3.11'
 
-    - name: Install Buildozer Dependencies
+    - name: Install System Dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install -y libltdl-dev libffi-dev libssl-dev autoconf autotools-dev libtool pkg-config zlib1g-dev libgstreamer1.0-dev gstreamer1.0-plugins-base gstreamer1.0-plugins-good
-        pip install --upgrade pip
-        pip install buildozer cython Kivy
+        sudo apt-get install -y git openjdk-17-jdk wget unzip zip libgl1-mesa-glx x11-apps xvfb
 
-    - name: Initialize and Build APK
+    - name: Install Flet App Builder
       run: |
-        # Generates the spec file automatically
-        buildozer init
-        
-        # Accept Android SDK licenses automatically to prevent interactive prompt crash
-        sed -i 's/# android.accept_sdk_license = False/android.accept_sdk_license = True/g' buildozer.spec
-        
-        # Build the APK in non-interactive mode
-        buildozer -v android debug
+        pip install --upgrade pip
+        pip install flet pyfirmata
+
+    - name: Execute Flet Compilation Cloud Sequence
+      env:
+        ANDROID_HOME: ${{ steps.setup-android.outputs.sdk-path }}
+      run: |
+        # Wrap execution in Xvfb virtual display so Flet doesn't crash from missing monitor
+        xvfb-run --auto-servernum python -m flet build apk
+
+    - name: Export Compiled Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: AgriRover-Android-Package
+        path: build/apk/*.apk
